@@ -1,5 +1,5 @@
-String getMonthName(int i){
-  switch (i) {
+String getMonthName(int month){
+  switch (month) {
     case 1: 
       return 'Enero';
       break;
@@ -61,5 +61,13 @@ String getDayName(int i){
       return 'Domingo';
     default:
       return 'Osvaldo'; 
+  }
+}
+
+String getDayTime(String hora){
+  if(hora == '01' || hora == '02' || hora == '03' || hora == '04' || hora == '05' || hora == '06' || hora == '07' || hora == '08' || hora == '09' || hora == '10' || hora == '11' || hora == '12'){
+    return 'AM';
+  }else{
+    return 'PM';
   }
 }

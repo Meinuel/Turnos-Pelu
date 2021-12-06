@@ -1,6 +1,5 @@
 class Turno{
   final String fecha;
-  final String hora;
-  final String servicio;
-  Turno(this.fecha,this.hora,this.servicio);
+  final List<String> horarios;
+  Turno(this.fecha,this.horarios);
 }

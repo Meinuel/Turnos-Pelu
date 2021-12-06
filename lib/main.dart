@@ -1,22 +1,27 @@
-import 'package:app_pelu/src/pages/calificanos_page.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:app_pelu/src/pages/cabello_page.dart';
+import 'package:app_pelu/src/pages/perfil_page.dart';
 import 'package:app_pelu/src/pages/principal_page.dart';
-import 'package:app_pelu/src/pages/turnos_page.dart';
-import 'package:app_pelu/src/provider/user_provider.dart';
-import 'package:app_pelu/src/util/bloc/contacto_bloc.dart';
+import 'package:app_pelu/src/provider/request_ws.dart';
 import 'package:app_pelu/src/util/bloc/provider_inherited.dart';
-import 'package:app_pelu/src/util/contacto_datos.dart';
+import 'package:app_pelu/src/util/routes.dart';
 import 'package:app_pelu/src/util/shared_preferences.dart';
 import 'package:app_pelu/src/util/models/user_data.dart';
+import 'package:app_pelu/src/widgets/bottomModal_widget.dart';
 import 'package:app_pelu/src/widgets/button_widget.dart';
-import 'package:app_pelu/src/widgets/radio_widget.dart';
-import 'package:app_pelu/src/widgets/spinner_widget.dart';
-import 'package:app_pelu/src/widgets/textFields_widget.dart';
-import 'package:app_pelu/src/widgets/userImage_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'src/pages/solicitar_page.dart';
+import 'src/pages/login_page.dart';
+import 'src/provider/user_provider.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+
   runApp(MyApp());
 }
 
@@ -29,9 +34,9 @@ class MyApp extends StatelessWidget {
         routes: { 'Largo'      : (BuildContext context) => LargoCabello(),
                   'Login'      : (BuildContext context) => Login(),
                   'Principal'  : (BuildContext context) => Principal(),
-                  'Solicitar'  : (BuildContext context) => Solicitar(),
-                  'Turnos'     : (BuildContext context) => MisTurnos(),
-                  'Calificar'  : (BuildContext context) => Calificanos()
+                 // 'Solicitar'  : (BuildContext context) => Solicitar(),
+                 // 'Turnos'     : (BuildContext context) => MisTurnos(),
+                  'Perfil'     : (BuildContext context) => Perfil(),
                   },
         debugShowCheckedModeBanner: false,
         title: 'Sistema de turnos',
@@ -51,145 +56,113 @@ class Loader extends StatefulWidget {
 }
 
 class _LoaderState extends State<Loader> {
-  Future<String> _id = SharedPrefs().getId();
+  final streamController = StreamController<bool>.broadcast();
+  final buttonController = StreamController<bool>.broadcast();
+  TextEditingController _controller = TextEditingController();
+  Future<String> phone = SharedPrefs().getPhone();
+  //Future<String> mobileNumber = MobileNumber.mobileNumber;
   @override
   void initState() {
     super.initState();
-    _id.then((id)=> Navigator.popAndPushNamed(context, 'Login')
-      // (id) => id == null ? Navigator.popAndPushNamed(context, 'Login') : _isRegister(id)
-      );
+    _controller.addListener(() { 
+      buttonController.sink.add(false);
+    });
+    phone.then((value) => value != null ? _isRegister(value) : streamController.sink.add(false)
+    );
   }
   @override
+  void dispose() {
+    streamController.close();
+    buttonController.close();
+    super.dispose();
+  }
+  @override
+  
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('App pelu'),
-            SizedBox(height: 50),
-            CircularProgressIndicator()
-          ],
-        ),
-      ),
-    );
-  }
-
-  _isRegister(String id) {
-      print('existe usuario');
-      Future isRegister = UserProvider().getUser(id);
-      final UserData userData = UserData('sieteoctavos78@gmail.com', 'Manuel', '1553154948', null, '23-03', 'M');
-      isRegister.then((value) => value != 'OK' ? Navigator.popAndPushNamed(context, 'Principal',arguments: userData) : Navigator.popAndPushNamed(context, 'Login'));
-  }
-
-}
-
-class Login extends StatefulWidget {
-  Login({Key key}) : super(key: key);
-
-  @override
-  _LoginState createState() => _LoginState();
-}
-
-class _LoginState extends State<Login> {
-  ContactoBloc _contactoBloc = ContactoBloc();
-
-  @override
-  Widget build(BuildContext context) {
-
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            SafeArea(
-              child: Stack(
-                children: [
-                  Container(
-                    height: MediaQuery.of(context).size.height / 5,
+        child: StreamBuilder<Object>(
+          stream: streamController.stream,
+          builder: (context, snapshot) {
+            return !snapshot.hasData ? 
+            Center(
+              child: CircularProgressIndicator()) :
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width / 5),
+                  child: PhoneFieldHint(
+                    decoration: InputDecoration(
+                      hintText: 'Nro Celular',
+                      icon: StreamBuilder<Object>(
+                        stream: buttonController.stream,
+                        builder: (context, btnSnapshot) {
+                          return !btnSnapshot.hasData ? Icon(Icons.phone_android) : !btnSnapshot.data ? Icon(Icons.phone_android) : Center(child: CircularProgressIndicator());
+                        }
+                      )),
+                    controller: _controller,
                   ),
-                  StreamBuilder<XFile>(
-                    stream: _contactoBloc.photoStream,
-                    builder: (context, snapshot) {
-                      return Container(
-                        color: Colors.grey.shade300,
-                        height: MediaQuery.of(context).size.height / 6,
-                        child: Center(child: snapshot.hasData ? UserImage(snapshot.data.path) : Text('Si queres podes agregar tu foto!'))
-                        );
-                        //child: Center(child: snapshot.hasData ? Image.file(File(snapshot.data.path)): Text('Agrega tu foto')));
-                    }
-                  ),
-                  Positioned(top: 100,left: 10,child: FloatingActionButton(
-                    onPressed: () async {
-                      XFile pickedImage = await ImagePicker().pickImage(source: ImageSource.camera);
-                      _contactoBloc.photoSink(pickedImage);
-                    },
-                    child: Icon(Icons.camera_enhance),backgroundColor: Colors.indigo[400]))
-                ],
-              ),
-            ),
-            SizedBox(
-              height: MediaQuery.of(context).size.height / 25,
-            ),
-            Expanded(
-              child: Container(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: _createContactForm(),
                 ),
-              ),
-            ),
-            SizedBox(
-              height: MediaQuery.of(context).size.height / 15,
-            )
-          ],
-        ),
-    );
-  }
-
-  _createContactForm() {
-    List<Widget> contactFormWidgets = [];
-    for (var item in mapContacto) {
-      contactFormWidgets.add(
-        MyTextFields(item['label'], item['helper'], item['hint'], item['icon'],item['type'],_contactoBloc)
-      );
-    }
-    contactFormWidgets.add(MySpinner(_contactoBloc));
-    _contactoBloc.isResolveSink(true);
-    contactFormWidgets.add(Align(alignment: Alignment.bottomRight,widthFactor: 2.8,child:MyButton('Hecho!',_contactoBloc,'Largo')));
-    return contactFormWidgets;
-  }
-}
-
-class LargoCabello extends StatelessWidget {
-final Map<String,String> values = {'C':'Corto','M':'Medio','L':'Largo','EL': 'Extra Largo'};
-  @override
-
-  Widget build(BuildContext context) {
-    ContactoBloc contactoBloc = ModalRoute.of(context).settings.arguments;
-    return Scaffold(
-      appBar: AppBar(title: Text('Largo de Cabello'),),
-      body: Container(
-        child: Column(
-          children: 
-            _createRadioBtn(contactoBloc)
-          ,
+                SizedBox(
+                  height: 50,
+                ),
+                StreamBuilder<Object>(
+                  stream: buttonController.stream,
+                  builder: (context, btnSnapshot) {
+                    return ElevatedButton(
+                      child: Text( !btnSnapshot.hasData ? 'Continuar' : !btnSnapshot.data ? 'Continuar' : 'Espere'),
+                      onPressed: btnSnapshot.hasData && _controller.text != '' && !btnSnapshot.data ? () async {
+                        buttonController.sink.add(true);
+                        final xml = UserProvider().getClienteByCelular(_controller.text);
+                        List<String> dataCliente = await triggerRequest(xml, 'getClienteByCelular');
+                        List<dynamic> lstRsp = parseRsp(dataCliente);
+                        if(!lstRsp[0]){
+                          UserData userData = UserData(int.parse(lstRsp[1]['Id']),int.parse(lstRsp[1]['SucursalId']),'${lstRsp[1]['Nombre']} ${lstRsp[1]['Apellido']}',lstRsp[1]['Celular'],lstRsp[1]['Email'],lstRsp[1]['Cumple_DDMM'],lstRsp[1]['CodigoVoucher'],lstRsp[1]['LargoCabelloCodigo'],lstRsp[1]['AltaCliente'],int.parse(lstRsp[1]['YaCalificoEnGoogle']),int.parse(lstRsp[1]['DiasPenalidadTurno']),null);
+                          SharedPrefs().setPhone(_controller.text);
+                          Navigator.popAndPushNamed(context, 'Principal', arguments: userData);
+                        }else if(lstRsp[1]['codigo'] == '1'){
+                          setRoute('Login',null,context,false,_controller.text);
+                        }else{
+                          buttonController.sink.add(false);
+                          createModal(context, 'Error de comunicacion');
+                        }
+                        
+                      } : null);
+                  }
+                )
+              ],
+            );
+          }
         ),
       ),
     );
   }
-
-  _createRadioBtn(ContactoBloc contactoBloc) {
-    List<Widget> lstRadioBtn = [];
-    for (var item in values.keys) {
-      final Widget radioBtn  = StreamBuilder(
-        stream:contactoBloc.hairStream,
-        builder:(_,snapshot){
-          return RadioButton(values[item], item, contactoBloc,null,snapshot);
-        });
-      lstRadioBtn.add(radioBtn);
-    }
-    lstRadioBtn.add(Align(alignment: Alignment.bottomRight,heightFactor: 3,widthFactor: 2.8,child:MyButton('Registrarme',contactoBloc,'Principal')));
-    return lstRadioBtn;
+  _isRegister(String phone) {
+    var xml = UserProvider().getClienteByCelular(phone);
+    Future<List<String>> isRegister = triggerRequest(xml, 'getClienteByCelular');
+    isRegister.then((List<String> dataCliente) async {
+      List<dynamic> lstRsp = parseRsp(dataCliente);
+      if(!lstRsp[0]){
+        final path = await SharedPrefs().getPhoto();
+        XFile photo = path != null ? XFile(path) : null;
+        UserData userData = UserData(int.parse(lstRsp[1]['Id']),int.parse(lstRsp[1]['SucursalId']),'${lstRsp[1]['Nombre']} ${lstRsp[1]['Apellido']}',phone,lstRsp[1]['Email'],lstRsp[1]['Cumple_DDMM'],lstRsp[1]['CodigoVoucher'],lstRsp[1]['LargoCabelloCodigo'],lstRsp[1]['AltaCliente'],int.parse(lstRsp[1]['YaCalificoEnGoogle']),int.parse(lstRsp[1]['DiasPenalidadTurno']),photo);
+        Navigator.pushNamedAndRemoveUntil(context, 'Principal', (route) => false,arguments: userData);
+      }else if(lstRsp[1]['codigo'] == '1'){
+        setRoute('Login', null, context,true, phone);
+      }else{
+        createModal(context, 'Error de comunicacion');
+      }
+    });
   }
 }
+  parseRsp(List<String> dataCliente){
+      final Map<String,dynamic> rsp = jsonDecode(dataCliente[0]);
+      bool codigoExist = false;
+      for (var item in rsp.keys) {
+        if(item == 'codigo'){
+          codigoExist = true;
+        }
+      }
+      return [codigoExist,rsp];
+  }

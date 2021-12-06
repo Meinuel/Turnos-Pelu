@@ -11,6 +11,7 @@ class ContactoBloc with Validators{
   final _photoController = BehaviorSubject<XFile>();
   final _hairLengthController = BehaviorSubject<String>();
   final _isResolveController = BehaviorSubject<bool>();
+  final _isEditingController = BehaviorSubject<bool>();
 
   Function(String) get nameSink  => _nameController.sink.add;
   Function(String) get birthSink => _birthController.sink.add;
@@ -19,14 +20,16 @@ class ContactoBloc with Validators{
   Function(XFile)  get photoSink => _photoController.sink.add;
   Function(String) get hairSink  => _hairLengthController.sink.add;
   Function(bool) get isResolveSink => _isResolveController.sink.add;
+  Function(bool) get isEditingSink => _isEditingController.sink.add;
 
-  Stream<String> get nameStream  => _nameController.stream;
+  Stream<String> get nameStream  => _nameController.stream.transform( validateName );
   Stream<String> get birthStream => _birthController.stream;
   Stream<String> get phoneStream => _phoneController.stream.transform( validatePhone );
   Stream<String> get emailStream => _emailController.stream.transform( validateEmail );
   Stream<XFile>  get photoStream => _photoController.stream; 
   Stream<String> get hairStream  => _hairLengthController.stream;
   Stream<bool> get isResolveStream   => _isResolveController.stream;
+  Stream<bool> get isEditingStream => _isEditingController.stream;
 
   String get name  => _nameController.value;
   String get birth => _birthController.value;
@@ -35,6 +38,7 @@ class ContactoBloc with Validators{
   XFile  get photo => _photoController.value;
   String get hair  => _hairLengthController.value;
   bool get isResolve => _isResolveController.value;
+  bool get isEditing => _isEditingController.value;
 
   dispose(){
     _nameController?.close();
@@ -44,5 +48,6 @@ class ContactoBloc with Validators{
     _photoController?.close();
     _hairLengthController?.close();
     _isResolveController?.close();
+    _isEditingController?.close();
   }
 }
